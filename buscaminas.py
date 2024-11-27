@@ -27,7 +27,7 @@ COLOR_MINA = ROJO
 COLOR_BANDERA = (0, 0, 255)
 
 #-------------------------------------- CONFIGURACION -----------------------------------------------
-ANCHO = 800
+ANCHO = 600
 CELDA = 35
 pantalla = pygame.display.set_mode((ANCHO,ANCHO + 40 ))
 fuente = pygame.font.Font(None, 36)
@@ -68,7 +68,7 @@ def inicializar_estado():
         "banderas_colocadas": 0  # Bandera inicialmente colocadas en 0
     }
 
-def inicializar_juego(estado, dificultad):
+def inicializar_juego(estado:dict, dificultad:dict)-> None:
     estado["dificultad"] = dificultad
     estado["filas"], estado["columnas"], estado["minas"] = DIFICULTADES[dificultad]
     estado["ancho"] = estado["columnas"] * CELDA
@@ -78,6 +78,7 @@ def inicializar_juego(estado, dificultad):
     estado["tablero"] = [[0 for _ in range(estado["columnas"])] for _ in range(estado["filas"])]
     estado["revelado"] = [[False for _ in range(estado["columnas"])] for _ in range(estado["filas"])]
     estado["perdido"] = False
+    estado["puntaje"] = 0
 
     minas_colocadas = 0
     while minas_colocadas < estado["minas"]:
@@ -91,9 +92,10 @@ def inicializar_juego(estado, dificultad):
                     if 0 <= nx < estado["columnas"] and 0 <= ny < estado["filas"] and estado["tablero"][ny][nx] != -1:
                         estado["tablero"][ny][nx] += 1
 
+    estado["puntaje"] = 0
 
 #-------------------------------------- FUNCIONES ---------------------------------------------------
-def mostrar_matriz(estado, matriz):
+def mostrar_matriz(estado:dict, matriz:list)->list:
     """
     Recibe por parametro una matriz y la muestra de manera prolija
     """
@@ -101,15 +103,15 @@ def mostrar_matriz(estado, matriz):
         for j in range(estado["columnas"]):
             print(matriz[i][j],end=" ")
         print(" ")
-    
-def dibujar_tablero(estado):
+        
+def dibujar_tablero(estado:dict)->None:
     for y in range(estado["filas"]):
         for x in range(estado["columnas"]):  #celda + 40 -> genera espacio arriba para colocar puntaje, tiempo y reinicio
             rect = pygame.Rect(x * CELDA, y * CELDA + 40, CELDA, CELDA)
             if estado["revelado"][y][x]:
                 # Celda revelada
                 pygame.draw.rect(pantalla, COLOR_REVELADO, rect)
-                if estado["tablero"][y][x] == -1:
+                if estado["tablero"][y][x] == -1:                    
                     # Dibujar mina
                     pygame.draw.circle(pantalla, COLOR_MINA, rect.center, CELDA // 4)
                 elif estado["tablero"][y][x] > 0:
@@ -137,8 +139,8 @@ def dibujar_tablero(estado):
     
     # Dibujar botón de reinicio
     crear_boton_reinicio(estado)       
-    
-def revelar_celdas(estado, x, y):
+
+def revelar_celdas(estado:dict, x:int, y:int)->None:
     if not (0 <= x < estado["columnas"] and 0 <= y < estado["filas"]) or estado["revelado"][y][x]:
         return
     estado["revelado"][y][x] = True
@@ -151,11 +153,11 @@ def revelar_celdas(estado, x, y):
             revelar_celdas(estado, x, y)
             estado["puntaje"] += 1
 
-def escribir_texto(texto, x, y):
+def escribir_texto(texto:str, x:int, y:int)->None:
     texto_renderizado = fuente.render(texto, True, NEGRO)
     pantalla.blit(texto_renderizado, (x, y))
 
-def crear_boton(texto, x, y, ancho, alto):
+def crear_boton(texto:str, x:int, y:int, ancho:int, alto:int)->None:
     # Dibujar fondo del botón
     rect = pygame.Rect(x, y, ancho, alto)
     pygame.draw.rect(pantalla, COLOR_BOTON, rect)
@@ -179,29 +181,39 @@ def crear_boton(texto, x, y, ancho, alto):
 
     return rect
 
-def dibujar_puntaje(estado):
+def dibujar_puntaje(estado:dict)->None:
     fuente = pygame.font.Font(None, 36)
     if estado["dificultad"] == "facil":
         fuente = pygame.font.Font(None, 24)  # Reducir tamaño de fuente en dificultad fácil
     puntaje_texto = fuente.render(f"Puntaje: {estado['puntaje']}", True, COLOR_TEXTO)
     pantalla.blit(puntaje_texto, (estado["ancho"] - 10 - puntaje_texto.get_width(), 10))  # Puntaje a la derecha
-    if revelar_celdas(estado, estado["ancho"], estado["alto"]):
-        estado["puntaje"] += 1
 
-def colocar_bandera(estado, x, y):
-    if not estado["revelado"][y][x] and estado["banderas"][y][x] == False:
+def guardar_puntaje(estado:dict, tiempo_transcurrido:int)->None:
+    import csv
+    import os
+    if not os.path.exists("puntajes.csv"):
+        with open('puntajes.csv', 'w', newline='') as file:
+            crear_archivo = csv.writer(file)
+            crear_archivo.writerow(["Dificultad", "Puntaje", "Tiempo"])
+    with open('puntajes.csv', 'a', newline='') as file:
+        crear_archivo = csv.writer(file)
+        crear_archivo = crear_archivo.writerow([estado["dificultad"], estado["puntaje"], tiempo_transcurrido])
+    
+    return crear_archivo
+
+def colocar_bandera(estado:dict, x:int, y:int)->None:
+    if estado["revelado"][y][x] == False and estado["banderas"][y][x] == False:
         estado["banderas"][y][x] = True
-        if estado["tablero"][y][x] == -1:  # Colocamos bandera sobre una mina
-            estado["puntaje"] -= 1  # Disminuye puntaje cuando es correcto
-        estado["banderas_colocadas"] += 1
+    if estado["revelado"][y][x] == True and estado["banderas"][y][x] == False:
+        estado["banderas"][y][x] = False
 
-def quitar_bandera(estado, x, y):
+def quitar_bandera(estado:dict, x:int, y:int)->None:
     if estado["banderas"][y][x]:
         estado["banderas"][y][x] = False
 
-def crear_boton_reinicio(estado):
+def crear_boton_reinicio(estado:dict)->None:
     # Cargar la imagen del botón de reinicio
-    imagen_boton = pygame.image.load('C:/Users/Usuario/Documents/buscaminas python/buscaminas.jpg')
+    imagen_boton = pygame.image.load('C:/Users/user/Documents/buscaminas_python/buscaminas.jpg')
     imagen_boton = pygame.transform.scale(imagen_boton, (60, 30))  # Ajustar el tamaño de la imagen
     # Definir la posición del botón entre el puntaje y el temporizador
     x = estado["ancho"] // 2 - imagen_boton.get_width() // 2
@@ -212,12 +224,12 @@ def crear_boton_reinicio(estado):
     pantalla.blit(imagen_boton, (x, y))
     return boton_rect
 
-def verificar_reinicio(estado, pos):
+def verificar_reinicio(estado:dict, pos)->None:
     boton_reinicio = crear_boton_reinicio(estado)
     if boton_reinicio.collidepoint(pos):
         inicializar_juego(estado, estado["dificultad"])  # Reiniciar el juego con la misma dificultad
                 
-def dibujar_temporizador(estado, tiempo_transcurrido):
+def dibujar_temporizador(estado:dict, tiempo_transcurrido:int)->None:
     fuente = pygame.font.Font(None, 36)
     if estado["dificultad"] == "facil":
         fuente = pygame.font.Font(None, 24)  # Reducir tamaño de fuente en dificultad fácil
@@ -226,10 +238,10 @@ def dibujar_temporizador(estado, tiempo_transcurrido):
 
 
 #-------------------------------------- PANTALLAS ---------------------------------------------------
-def pantalla_menu(estado):
+def pantalla_menu(estado:dict)->None:
     pantalla.fill(COLOR_FONDO)
     titulo = pygame.font.Font(None, 36).render("Buscaminas", True, NEGRO)
-    imagen_mina = pygame.image.load('C:/Users/Usuario/Documents/buscaminas python/mina.png')
+    imagen_mina = pygame.image.load('C:/Users/user/Documents/buscaminas_python/mina.png')
     x = estado["ancho"] // 2 - imagen_mina.get_width() // 2 
     y = 5  
     pantalla.blit(imagen_mina, (x, y))
@@ -238,27 +250,27 @@ def pantalla_menu(estado):
             crear_boton("Puntaje", ANCHO // 2 - 50, ANCHO // 2, 100, 40), \
             crear_boton("Salir", ANCHO // 2 - 50, ANCHO // 2 + 60, 100, 40)
 
-def pantalla_niveles(estado):
+def pantalla_niveles(estado:dict)->None:
     pantalla.fill(COLOR_FONDO)
     titulo = pygame.font.Font(None, 36).render("Seleccionar Nivel", True, COLOR_TEXTO)
-    imagen_mina = pygame.image.load('C:/Users/Usuario/Documents/buscaminas python/mina.png')
+    imagen_mina = pygame.image.load('C:/Users/user/Documents/buscaminas_python/mina.png')
     x = estado["ancho"] // 2 - imagen_mina.get_width() // 2 
     y = 5  
     pantalla.blit(imagen_mina, (x, y))
     pantalla.blit(titulo, titulo.get_rect(center=(ANCHO // 2, ANCHO // 4)))
     return crear_boton("Fácil", ANCHO // 2 - 50, ANCHO // 2 - 60, 100, 40), \
            crear_boton("Medio", ANCHO // 2 - 50, ANCHO // 2, 100, 40), \
-           crear_boton("Difícil", ANCHO // 2 - 50, ANCHO // 2 + 60, 100, 40)
+           crear_boton("Difícil", ANCHO // 2 - 50, ANCHO // 2 + 60, 100, 40), \
+            crear_boton("Atras", ANCHO // 2 - 250, ANCHO // 2 + 250, 100, 30)
 
-def pantalla_puntaje(estado):
+def pantalla_puntaje(estado:dict, tiempo_transcurrido:int)->None:
     pantalla.fill((GRIS))
-    imagen_mina = pygame.image.load('C:/Users/Usuario/Documents/buscaminas python/mina.png')
+    imagen_mina = pygame.image.load('C:/Users/user/Documents/buscaminas_python/mina.png')
     x = estado["ancho"] // 2 - imagen_mina.get_width() // 2 
     y = 5  
     pantalla.blit(imagen_mina, (x, y))
-         
-    escribir_texto("PUNTAJE TOTAL :", ANCHO // 2 - 350, ANCHO // 2 - 250)
-
+    escribir_texto(f"PUNTAJE TOTAL : {guardar_puntaje(estado, tiempo_transcurrido)}", ANCHO // 2 - 250, ANCHO // 2 - 250)
+    return crear_boton("Atras", ANCHO // 2 - 250, ANCHO // 2 + 250, 100, 30)
 
 #-------------------------------------- EJECUCCION --------------------------------------------------
 def ejecutar():
@@ -283,22 +295,35 @@ def ejecutar():
                     elif botones[2].collidepoint(evento.pos):
                         corriendo = False
                 elif estado["estado"] == "puntaje":
-                    botones = pantalla_puntaje(estado)                
+                    botones = pantalla_puntaje(estado, tiempo_transcurrido)
+                    if botones.collidepoint(evento.pos):
+                        estado["estado"] = "menu"            
                 elif estado["estado"] == "niveles":
                     botones = pantalla_niveles(estado)
                     if botones[0].collidepoint(evento.pos):
                         inicializar_juego(estado, "facil")
+                        mostrar_matriz(estado, estado["tablero"])
                         estado["estado"] = "juego"
                     elif botones[1].collidepoint(evento.pos):
                         inicializar_juego(estado, "medio")
+                        mostrar_matriz(estado, estado["tablero"])
                         estado["estado"] = "juego"
                     elif botones[2].collidepoint(evento.pos):
                         inicializar_juego(estado, "dificil")
+                        mostrar_matriz(estado, estado["tablero"])
                         estado["estado"] = "juego"
+                    elif botones[3].collidepoint(evento.pos):
+                        estado["estado"] = "menu"
                 elif estado["estado"] == "juego" and not estado["perdido"]:
                     x, y = evento.pos
                     cx, cy = x // CELDA, y // CELDA
                     if evento.button == 1:  # Click izquierdo (revelar)
+                        if estado["dificultad"] == "facil":
+                            estado["puntaje"] += 1
+                        if estado["dificultad"] == "medio":
+                            estado["puntaje"] += 2
+                        if estado["dificultad"] == "dificil":
+                            estado["puntaje"] += 4
                         if estado["tablero"][cy][cx] == -1:
                             estado["perdido"] = True
                         else:
@@ -306,9 +331,10 @@ def ejecutar():
                     elif evento.button == 3:  # Click derecho (colocar bandera)
                         if estado["banderas"][cy][cx]:
                             quitar_bandera(estado, cx, cy)
+
                         else:
                             colocar_bandera(estado, cx, cy)
-                    
+
                     # Verificar si se hace clic en el botón de reinicio
                     verificar_reinicio(estado, evento.pos)
 
@@ -316,7 +342,7 @@ def ejecutar():
         if estado["estado"] == "menu":
             pantalla_menu(estado)
         elif estado["estado"] == "puntaje":
-            pantalla_puntaje(estado)
+            pantalla_puntaje(estado, tiempo_transcurrido)
         elif estado["estado"] == "niveles":
             pantalla_niveles(estado)
         elif estado["estado"] == "juego":
@@ -324,6 +350,7 @@ def ejecutar():
             dibujar_tablero(estado)
             dibujar_puntaje(estado)
             dibujar_temporizador(estado, tiempo_transcurrido)
+ 
             if estado["perdido"]:
                 texto = pygame.font.Font(None, 36).render("¡Perdiste!", True, COLOR_MINA)
                 pantalla.blit(texto, texto.get_rect(center=(estado["ancho"] // 2, estado["alto"] // 2)))
