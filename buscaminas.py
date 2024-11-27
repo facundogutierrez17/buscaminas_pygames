@@ -50,7 +50,11 @@ DIFICULTADES = {
     "dificil": (24, 24, 99)
 }
 
-def inicializar_estado():
+def inicializar_estado()->dict:
+    """
+    funcion que contiene el diccionario principal que nos servira mas adelante para desarrollar el juego
+    - No recibe parametros solo retorna el diccionario principal 
+    """
     return {
         "pantalla": pygame.display.set_mode((ANCHO, ANCHO + 40)),  # Aumentamos el alto de la pantalla
         "estado": "menu",
@@ -65,10 +69,15 @@ def inicializar_estado():
         "ancho": ANCHO,
         "alto": ANCHO + 40,
         "puntaje": 0,  # Iniciamos el puntaje en 0
-        "banderas_colocadas": 0  # Bandera inicialmente colocadas en 0
+        "banderas_colocadas": 0  # Bandera inicialmente colocadas en 0  diccionario principal que nos servira mas adelante para desarrollar el juego
     }
 
 def inicializar_juego(estado:dict, dificultad:dict)-> None:
+    """
+    funcion que accede a los valores del diccionario principal asi como al de dificultad, asignandoles la logica que nos servira mas adelante para desarrollar el juego
+    - recibe como parametros estado y dificultad para poder acceder a los valores de los diccionarios 
+    - ubica de manera aleatoria las minas dentro del tablero, NO DIBUJA LAS BANDERAS.
+    """
     estado["dificultad"] = dificultad
     estado["filas"], estado["columnas"], estado["minas"] = DIFICULTADES[dificultad]
     estado["ancho"] = estado["columnas"] * CELDA
@@ -97,7 +106,9 @@ def inicializar_juego(estado:dict, dificultad:dict)-> None:
 #-------------------------------------- FUNCIONES ---------------------------------------------------
 def mostrar_matriz(estado:dict, matriz:list)->list:
     """
-    Recibe por parametro una matriz y la muestra de manera prolija
+    funcion que muestra por pantalla la matriz recibida como parametro
+    - recibe como parametro la matriz que indiquemos
+    - muestra por pantalla dicha matriz ubicando de la forma correcta sus filas y sus columnas
     """
     for i in range(estado["filas"]):
         for j in range(estado["columnas"]):
@@ -105,6 +116,11 @@ def mostrar_matriz(estado:dict, matriz:list)->list:
         print(" ")
         
 def dibujar_tablero(estado:dict)->None:
+    """
+    funcion que genera la matriz del tablero y dibuja el tablero del buscamina
+    - recibe como parametro estado para poder acceder a los valores del diccionario
+    - muestra por pantalla el tablero del juego
+    """
     for y in range(estado["filas"]):
         for x in range(estado["columnas"]):  #celda + 40 -> genera espacio arriba para colocar puntaje, tiempo y reinicio
             rect = pygame.Rect(x * CELDA, y * CELDA + 40, CELDA, CELDA)
@@ -141,6 +157,11 @@ def dibujar_tablero(estado:dict)->None:
     crear_boton_reinicio(estado)       
 
 def revelar_celdas(estado:dict, x:int, y:int)->None:
+    """
+    funcion que recorre las filas y las columnas de la matriz del tablero asi como tambien establece el limite del mismo para prevenir errores
+    - recibe como parametro estado para poder acceder a los valores del diccionario asi como tambien x,y que son coordenadas
+    - esta funcion no tiene retorno, es una funcion recursiva ya que se llama asi misma dentro de su propio algoritmo
+    """
     if not (0 <= x < estado["columnas"] and 0 <= y < estado["filas"]) or estado["revelado"][y][x]:
         return
     estado["revelado"][y][x] = True
@@ -148,16 +169,22 @@ def revelar_celdas(estado:dict, x:int, y:int)->None:
         for i in range(-1, 2):
             for j in range(-1, 2):
                 revelar_celdas(estado, x + i, y + j)
-    for evento in pygame.event.get():
-        if evento.type == pygame.MOUSEBUTTONDOWN:
-            revelar_celdas(estado, x, y)
-            estado["puntaje"] += 1
 
 def escribir_texto(texto:str, x:int, y:int)->None:
+    """
+    funcion para escribir en patalla 
+    - recibe como parametro el texto que se va a mostrar en pantalla, asi como tambien sus coordenadas para ubicarlo donde queramos(x,Y)
+    - no tiene retorno solo renderiza el texto que recibe por parametro, lo ubica y muestra en pantalla
+    """
     texto_renderizado = fuente.render(texto, True, NEGRO)
     pantalla.blit(texto_renderizado, (x, y))
 
 def crear_boton(texto:str, x:int, y:int, ancho:int, alto:int)->None:
+    """
+    funcion para crear botones, solo crea el boton visualmente en pantalla sin funcionalidad
+    - recibe como parametro el texto que se va a mostrar en el boton, asi como tambien sus coordenadas para ubicarlo donde queramos(x,Y)
+    - retorna la variable que contiene  la clase Rect de pygame, se utiliza para ubicar y dar forma a areas rectangulares
+    """
     # Dibujar fondo del botón
     rect = pygame.Rect(x, y, ancho, alto)
     pygame.draw.rect(pantalla, COLOR_BOTON, rect)
@@ -182,6 +209,11 @@ def crear_boton(texto:str, x:int, y:int, ancho:int, alto:int)->None:
     return rect
 
 def dibujar_puntaje(estado:dict)->None:
+    """
+    funcion que muestra por pantalla el puntaje
+    - recibe como parametro estado para poder acceder a los valores del diccionario
+    - muestra por pantalla el puntaje obtenido y guardado en el archivos csv asi como la dificultad de juego y el tiempo transcurrido
+    """
     fuente = pygame.font.Font(None, 36)
     if estado["dificultad"] == "facil":
         fuente = pygame.font.Font(None, 24)  # Reducir tamaño de fuente en dificultad fácil
@@ -189,6 +221,11 @@ def dibujar_puntaje(estado:dict)->None:
     pantalla.blit(puntaje_texto, (estado["ancho"] - 10 - puntaje_texto.get_width(), 10))  # Puntaje a la derecha
 
 def guardar_puntaje(estado:dict, tiempo_transcurrido:int)->None:
+    """
+    esta funcion importa las bibliotecas csv y os para poder almacenar en un archivo de texto los valores obtenidos (puntaje, dificultad, tiempo)
+    - recibe como parametro estado para poder acceder a los valores del diccionario como tambien el tiempo transcurrido
+    - retorna la variable que guarda los datos obtenidos
+    """
     import csv
     import os
     if not os.path.exists("puntajes.csv"):
@@ -202,16 +239,31 @@ def guardar_puntaje(estado:dict, tiempo_transcurrido:int)->None:
     return crear_archivo
 
 def colocar_bandera(estado:dict, x:int, y:int)->None:
+    """
+    funcion para poder colocar las banderas dentro del tablero del juego
+    - recibe como parametro estado para poder acceder a los valores del diccionario asi como tambien las coordenadas de la casilla a marcar
+    - funcion contiene solo la logica de como colocar la bandera, NO DIBUJA LA BANDERA A COLOCAR
+    """
     if estado["revelado"][y][x] == False and estado["banderas"][y][x] == False:
         estado["banderas"][y][x] = True
     if estado["revelado"][y][x] == True and estado["banderas"][y][x] == False:
         estado["banderas"][y][x] = False
 
 def quitar_bandera(estado:dict, x:int, y:int)->None:
+    """
+    funcion para poder sacar las banderas ya colocadas dentro del tablero del juego
+    - recibe como parametro estado para poder acceder a los valores del diccionario asi como tambien las coordenadas de la casilla a desmarcar
+    - funcion contiene solo la logica de cuando quitar la bandera, NO DIBUJA LA BANDERA A QUITAR
+    """
     if estado["banderas"][y][x]:
         estado["banderas"][y][x] = False
 
 def crear_boton_reinicio(estado:dict)->None:
+    """
+    funcion que dibuja el boton de reincio y le asigna una imagen al mismo
+    - recibe como parametro estado para poder acceder a los valores del diccionario 
+    - retorna el boton de reinicio creado con la imagen y mostrandola en la parte centro superior del tablero del juego
+    """
     # Cargar la imagen del botón de reinicio
     imagen_boton = pygame.image.load('C:/Users/user/Documents/buscaminas_python/buscaminas.jpg')
     imagen_boton = pygame.transform.scale(imagen_boton, (60, 30))  # Ajustar el tamaño de la imagen
@@ -225,17 +277,26 @@ def crear_boton_reinicio(estado:dict)->None:
     return boton_rect
 
 def verificar_reinicio(estado:dict, pos)->None:
+    """
+    funcion que contiene la logica del boton de reinicio
+    - recibe como parametro estado para poder acceder a los valores del diccionario 
+    - se asegura que una vez pulsado el boton de reinicio el juego empiece de nuevo en la misma dificulta 
+    """
     boton_reinicio = crear_boton_reinicio(estado)
     if boton_reinicio.collidepoint(pos):
         inicializar_juego(estado, estado["dificultad"])  # Reiniciar el juego con la misma dificultad
                 
 def dibujar_temporizador(estado:dict, tiempo_transcurrido:int)->None:
+    """
+    funcion que dibuja el contador dentro del tablero de juego
+    - recibe como parametro estado para poder acceder a los valores del diccionario asi como el tiempo transcurrido en la partidad
+    - ubica el temporizador en la parte superior izquierda , tambien reduce el tamaño de la fuente si se achica la pantalla (como en la dificultad facil)
+    """
     fuente = pygame.font.Font(None, 36)
     if estado["dificultad"] == "facil":
         fuente = pygame.font.Font(None, 24)  # Reducir tamaño de fuente en dificultad fácil
     tiempo_texto = fuente.render(f"Tiempo: {tiempo_transcurrido}s", True, COLOR_TEXTO)
     pantalla.blit(tiempo_texto, (10, 10))  # Temporizador a la izquierda
-
 
 #-------------------------------------- PANTALLAS ---------------------------------------------------
 def pantalla_menu(estado:dict)->None:
