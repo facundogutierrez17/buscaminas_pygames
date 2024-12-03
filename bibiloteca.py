@@ -314,30 +314,5 @@ def dibujar_temporizador(estado:dict)->None:
     # Limitar a 60 FPS
     reloj.tick(60)
 
-def pedir_nick():
-    pygame.init()
-    entrada = ""  # Nick que el jugador está escribiendo
-    esperando = True
-    while esperando:
-        for evento in pygame.event.get():
-            if evento.type == pygame.QUIT:
-                pygame.quit()
-
-            # Capturar teclas presionadas
-            if evento.type == pygame.KEYDOWN:
-                if evento.key == pygame.K_RETURN:  # Enter para confirmar
-                    esperando = False
-                elif evento.key == pygame.K_BACKSPACE:  # Borrar el último carácter
-                    entrada = entrada[:-1]
-                else:
-                    entrada += evento.unicode  # Agregar el carácter presionado
-    
-    pantalla.fill(NEGRO)
-    texto = fuente.render("Ingresa tu nick:", True, BLANCO)
-    pantalla.blit(texto, (ANCHO // 2 - texto.get_width() // 2, ANCHO // 2 - 100))
-    pygame.display.flip()
-
-    # Limitar a 60 FPS
-
 
 
