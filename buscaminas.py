@@ -39,6 +39,62 @@ def pantalla_puntaje(estado:dict)->None:
     escribir_texto(f"PUNTAJE TOTAL : {guardar_puntaje_tiempo(estado)}", ANCHO // 2 - 250, ANCHO // 2 - 250)
     return crear_boton("Atras", ANCHO // 2 - 250, ANCHO // 2 + 250, 100, 30)
 
+def pedir_nick(estado):
+    input_box = pygame.Rect(ANCHO // 4, ANCHO // 3, 400, 50)  # Rectángulo para el cuadro de texto
+    color_active = pygame.Color('lightskyblue3')
+    color_inactive = pygame.Color('gray15')
+    color = color_inactive
+    active = False
+    nick = estado.get("nick", "")
+    clock = pygame.time.Clock()
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                # Activar/desactivar cuadro de texto
+                if input_box.collidepoint(event.pos):
+                    active = not active
+                else:
+                    active = False
+                color = color_active if active else color_inactive
+            if event.type == pygame.KEYDOWN and active:
+                if event.key == pygame.K_BACKSPACE:
+                    nick = nick[:-1]
+                else:
+                    nick += event.unicode
+                    return
+ 
+        # Dibujar pantalla
+        pantalla.fill((200, 200, 200))  # Fondo gris claro
+
+        # Renderizar título
+        titulo = fuente.render("Ingrese su Nick:", True, (0, 0, 0))
+        pantalla.blit(titulo, titulo.get_rect(center=(ANCHO // 2, ANCHO // 4)))
+
+        # Renderizar cuadro de texto
+        pygame.draw.rect(pantalla, color, input_box, 2)
+        txt_surface = fuente.render(nick, True, (0, 0, 0))
+        pantalla.blit(txt_surface, (input_box.x + 5, input_box.y + 5))
+        input_box.w = max(400, txt_surface.get_width() + 10)
+
+        boton_rect = pygame.Rect(ANCHO // 2 - 50, ANCHO // 2 + 60, 100, 40)
+        pygame.draw.rect(pantalla, (0, 150, 0), boton_rect)
+        boton_texto = fuente.render("Enter", True, (255, 255, 255))
+        pantalla.blit(boton_texto, boton_texto.get_rect(center=boton_rect.center))
+
+        # Detectar clic en el botón
+        for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if boton_rect.collidepoint(event.pos):
+                    estado["nick"] = nick
+                    inicializar_juego(estado, estado["dificultad"])  
+
+
+        pygame.display.flip()
+        clock.tick(60)
+
 #-------------------------------------- EJECUCCION --------------------------------------------------
 def ejecutar():
     estado = inicializar_estado()
@@ -104,7 +160,6 @@ def ejecutar():
                     elif evento.button == 3:  # Click derecho (colocar bandera)
                         if estado["banderas"][cy][cx]:
                             quitar_bandera(estado, cx, cy)
-
                         else:
                             colocar_bandera(estado, cx, cy)
 
@@ -122,12 +177,16 @@ def ejecutar():
             dibujar_tablero(estado)
             dibujar_puntaje(estado)
             if estado["perdido"]:
+                for evento in pygame.event.get():
+                    if evento.type == pygame.MOUSEBUTTONDOWN:  
+                        verificar_reinicio(estado, evento.pos)
                 guardar_puntaje_tiempo(estado)
                 texto = pygame.font.Font(None, 36).render("¡Perdiste!", True, COLOR_MINA)
                 pantalla.blit(texto, texto.get_rect(center=(estado["ancho"] // 2, estado["alto"] // 2)))
                 estado["puntaje"] = 0 
-                estado["temporizador"] =  pygame.time.get_ticks()
+                estado["temporizador"] = pygame.time.get_ticks()
         pygame.display.flip()
+    guardar_puntaje_tiempo(estado)
     pygame.quit()
 
 ejecutar()
